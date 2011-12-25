@@ -12,19 +12,17 @@ const MIGEMO = '/usr/bin/cmigemo';
 const MIGEMO_DICT = '/usr/share/cmigemo/utf-8/migemo-dict';
 const MIGEMO_MIN_TERMS = 2;
 
-// Put your extension initialization code here
 function main() {
+    let migemoProvider = new MigemoSearchProvider();
 
-    let migemo = new MigemoSearchProvider();
-
-    Main.overview.viewSelector.addSearchProvider(migemo);
+    Main.overview.viewSelector.addSearchProvider(migemoProvider);
 
     Search.SearchSystem.prototype.updateSearch_orig = Search.SearchSystem.prototype.updateSearch;
     Search.SearchSystem.prototype.updateSearch = function(searchString){
         let results = this.updateSearch_orig(searchString);
-        let res = migemo.getResultSet(searchString);
+        let res = migemoProvider.getResultSet(searchString);
         if(res.length > 0){
-            results.push([migemo, res]);
+            results.push([migemoProvider, res]);
         }
         return results;
     }
@@ -56,8 +54,6 @@ MigemoSearchProvider.prototype = {
         if (terms.length < MIGEMO_MIN_TERMS) { return []; }
 
         let searchString = this._migemo.query(terms);
-        global.log(searchString);
-
         let regexp = new RegExp(searchString);
         let apps = this._appSys.get_flattened_apps(); // get all apps
         return apps.filter(function(app){
