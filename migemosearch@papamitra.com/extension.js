@@ -94,7 +94,11 @@ Migemo.prototype = {
     },
 
     query: function(query) {
-        this._stdin.put_string(query + '\n', null);
+        function upcaseFirst(s) {
+            return s.replace(/^\w/, function(x) {return x.toUpperCase()});
+        }
+
+        this._stdin.put_string(query.split(/\s+/).map(upcaseFirst).join('') + '\n', null);
         // XXX: Want to use cancellable.
         let [out, size] = this._stdout.read_line(null);
         return out;
