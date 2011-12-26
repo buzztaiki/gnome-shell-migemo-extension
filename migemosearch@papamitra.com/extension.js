@@ -18,10 +18,15 @@ function main() {
     Main.overview.viewSelector.addSearchProvider(migemoProvider);
 
     Search.SearchSystem.prototype.updateSearch_orig = Search.SearchSystem.prototype.updateSearch;
-    Search.SearchSystem.prototype.updateSearch = function(searchString){
+    Search.SearchSystem.prototype.updateSearch = function(searchString) {
         let results = this.updateSearch_orig(searchString);
-        let res = migemoProvider.getResultSet(searchString);
-        if(res.length > 0){
+        let resultIds = results.reduce(function(acc, [provider, providerResults]) {
+            return acc.concat(providerResults);
+        }, []);
+        let res = migemoProvider.getResultSet(searchString).filter(function(id) {
+            return resultIds.indexOf(id) < 0;
+        });
+        if(res.length > 0) {
             results.push([migemoProvider, res]);
         }
         return results;
@@ -51,14 +56,16 @@ MigemoSearchProvider.prototype = {
     },
 
     getResultSet: function(terms) {
-        if (terms.length < MIGEMO_MIN_TERMS) { return []; }
+        if (terms.length < MIGEMO_MIN_TERMS) {
+            return [];
+        }
 
         let searchString = this._migemo.query(terms);
         let regexp = new RegExp(searchString);
         let apps = this._appSys.get_flattened_apps(); // get all apps
-        return apps.filter(function(app){
+        return apps.filter(function(app) {
             return -1 < app.get_name().search(regexp);
-        }).map(function(app){
+        }).map(function(app) {
             return app.get_id();
         });
     },
