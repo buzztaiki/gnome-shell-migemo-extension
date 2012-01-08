@@ -18,13 +18,13 @@ MigemoSearchProvider.prototype = {
     __proto__: Search.SearchProvider.prototype,
 
     _init: function(migemo) {
-        Search.SearchProvider.prototype._init.call(this, "migemo");
+        Search.SearchProvider.prototype._init.call(this, 'migemo');
         this._migemo = migemo;
         this._appSys = Shell.AppSystem.get_default();
     },
 
     getInitialResultSet: function(terms) {
-        let results = this._getResultSet(terms.join(""));
+        let results = this._getResultSet(terms.join(' '));
         if (results.length == 0) {
             return results;
         }
@@ -32,7 +32,7 @@ MigemoSearchProvider.prototype = {
     },
 
     getSubsearchResultSet: function(previousResults, terms) {
-        let results = this._getResultSet(terms.join(""));
+        let results = this._getResultSet(terms.join(' '));
         if (results.length == 0) {
             return results;
         }
