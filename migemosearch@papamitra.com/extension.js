@@ -24,6 +24,14 @@ MigemoSearchProvider.prototype = {
         Search.SearchProvider.prototype._init.call(this, 'migemo');
         this._migemo = migemo;
         this._appSys = Shell.AppSystem.get_default();
+        this._appSearch = new AppDisplay.AppSearchProvider();
+
+        let self = this;
+        ['getResultMeta', 'activateResult', 'dragActivateResult', 'createResultActor',].forEach(function(x) {
+            self[x] = function() {
+                return self._appSearch[x].apply(self._appSearch, arguments);
+            };
+        });
     },
 
     getInitialResultSet: function(terms) {
@@ -43,11 +51,11 @@ MigemoSearchProvider.prototype = {
         } else if (previousResults == null || previousResults.pendingMigemo || searchString.length == MIGEMO_MIN_LENGTH) {
             return this._reduceResults(
                 this._search(searchString, this._appSys.get_all()),
-                this._appSys.initial_search(terms));
+                this._appSearch.getInitialResultSet(terms));
         } else {
             return this._reduceResults(
                 this._search(searchString, previousResults),
-                this._appSys.subsearch(previousResults, terms));
+                this._appSearch.getSubsearchResultSet(previousResults, terms));
         }
     },
 
@@ -69,22 +77,6 @@ MigemoSearchProvider.prototype = {
         return apps.filter(function(app) {
             return -1 < app.get_name().search(regexp);
         });
-    },
-
-    getResultMeta: function(app) {
-        return AppDisplay.AppSearchProvider.prototype.getResultMeta.call(this, app);
-    },
-
-    activateResult: function(app, params) {
-        return AppDisplay.AppSearchProvider.prototype.activateResult.call(this, app, params);
-    },
-
-    dragActivateResult: function(id, params) {
-        return AppDisplay.AppSearchProvider.prototype.dragActivateResult.call(this, id, params);
-    },
-
-    createResultActor: function (resultMeta, terms) {
-        return AppDisplay.AppSearchProvider.prototype.createResultActor.call(this, resultMeta, terms);
     },
 };
 
