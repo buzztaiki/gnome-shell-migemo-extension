@@ -24,19 +24,28 @@ MigemoSearchProvider.prototype = {
     },
 
     getInitialResultSet: function(terms) {
-        let results = this._getResultSet(terms.join(' '));
-        if (results.length == 0) {
-            return results;
-        }
-        return this._reduceResults(results, this._appSys.initial_search(terms));
+        return this._getResultSet(null, terms);
     },
 
     getSubsearchResultSet: function(previousResults, terms) {
-        let results = this._getResultSet(terms.join(' '));
-        if (results.length == 0) {
-            return results;
+        return this._getResultSet(previousResults, terms);
+    },
+
+    _getResultSet: function(previousResults, terms) {
+        let searchString = terms.join(' ');
+        if (searchString.length < MIGEMO_MIN_LENGTH) {
+            let result = [];
+            result.pendingMigemo = true;
+            return result;
+        } else if (previousResults == null || previousResults.pendingMigemo || searchString.length == MIGEMO_MIN_LENGTH) {
+            return this._reduceResults(
+                this._search(searchString, this._appSys.get_all()),
+                this._appSys.initial_search(terms));
+        } else {
+            return this._reduceResults(
+                this._search(searchString, previousResults),
+                this._appSys.subsearch(previousResults, terms));
         }
-        return this._reduceResults(results, this._appSys.subsearch(previousResults, terms));
     },
 
     _reduceResults: function(results, appResults) {
@@ -48,14 +57,12 @@ MigemoSearchProvider.prototype = {
         });
     },
 
-    _getResultSet: function(searchString) {
-        if (searchString.length < MIGEMO_MIN_LENGTH) {
+    _search: function(searchString, apps) {
+        if (searchString.length < MIGEMO_MIN_LENGTH || apps.length == 0) {
             return [];
         }
-
         let queryResult = this._migemo.query(searchString);
         let regexp = new RegExp(queryResult);
-        let apps = this._appSys.get_all();
         return apps.filter(function(app) {
             return -1 < app.get_name().search(regexp);
         });
