@@ -10,6 +10,9 @@ const MIGEMO = '/usr/bin/cmigemo';
 const MIGEMO_DICT = '/usr/share/cmigemo/utf-8/migemo-dict';
 const MIGEMO_MIN_LENGTH = 2;
 
+/**
+ * Migemo application search provider for gnome-3.2 and later.
+ */
 function MigemoSearchProvider(migemo) {
     this._init(migemo);
 }
@@ -85,6 +88,60 @@ MigemoSearchProvider.prototype = {
     },
 };
 
+/**
+ * Migemo application search provider for gnome-3.0
+ */
+function MigemoSearchProvider_30() {
+    this._init();
+}
+
+MigemoSearchProvider_30.prototype = {
+    __proto__: (function() {
+        if ('BaseAppSearchProvider' in AppDisplay) {
+            return AppDisplay.BaseAppSearchProvider.prototype;
+        } else {
+            return {};
+        }
+    })(),
+
+    _init: function() {
+        AppDisplay.BaseAppSearchProvider.prototype._init.call(this, "migemo");
+        this._migemo = new Migemo(MIGEMO, MIGEMO_DICT);
+    },
+
+    getInitialResultSet: function(terms) {
+        // dummy
+        return [];
+    },
+
+    getSubsearchResultSet: function(previousResults, terms) {
+        // dummy
+        return [];
+    },
+
+    getResultSet: function(terms) {
+        if (terms.length < MIGEMO_MIN_LENGTH) {
+            return [];
+        }
+
+        let searchString = this._migemo.query(terms);
+        let regexp = new RegExp(searchString);
+        let apps = this._appSys.get_flattened_apps(); // get all apps
+        return apps.filter(function(app) {
+            return -1 < app.get_name().search(regexp);
+        }).map(function(app) {
+            return app.get_id();
+        });
+    },
+
+    createResultActor: function (resultMeta, terms) {
+        let app = this._appSys.get_app(resultMeta['id']);
+        let icon = new AppDisplay.AppWellIcon(app);
+        return icon.actor;
+    }
+};
+
+
 function Migemo(migemo, migemoDict) {
     this._init(migemo, migemoDict);
 }
@@ -153,4 +210,22 @@ function init() {
 }
 
 function main() {
+    let migemoProvider = new MigemoSearchProvider_30();
+
+    Main.overview.viewSelector.addSearchProvider(migemoProvider);
+
+    Search.SearchSystem.prototype.updateSearch_orig = Search.SearchSystem.prototype.updateSearch;
+    Search.SearchSystem.prototype.updateSearch = function(searchString) {
+        let results = this.updateSearch_orig(searchString);
+        let resultIds = results.reduce(function(acc, [provider, providerResults]) {
+            return acc.concat(providerResults);
+        }, []);
+        let res = migemoProvider.getResultSet(searchString).filter(function(id) {
+            return resultIds.indexOf(id) < 0;
+        });
+        if(res.length > 0) {
+            results.push([migemoProvider, res]);
+        }
+        return results;
+    }
 }
